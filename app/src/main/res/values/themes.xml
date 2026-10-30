@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="parq_bg">#FF0F110C</color>
+    <color name="parq_alarm">#FFD3140F</color>
+    <color name="ic_launcher_background">#FFFFFFFF</color>
+
+    <style name="Theme.ParqTime" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/parq_bg</item>
+        <item name="android:statusBarColor">@color/parq_bg</item>
+        <item name="android:navigationBarColor">@color/parq_bg</item>
+    </style>
+
+    <style name="Theme.ParqTime.Alarm" parent="Theme.ParqTime">
+        <item name="android:windowBackground">@color/parq_alarm</item>
+        <item name="android:statusBarColor">@color/parq_alarm</item>
+        <item name="android:navigationBarColor">@color/parq_alarm</item>
+    </style>
+</resources>

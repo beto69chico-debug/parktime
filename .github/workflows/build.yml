@@ -1,0 +1,46 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Pruebas de la lógica de tiempo
+        run: ./gradlew --no-daemon testReleaseUnitTest
+
+      - name: Compilar APK firmado
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Preparar archivo
+        run: cp app/build/outputs/apk/release/app-release.apk ParqTime.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ParqTime-${{ github.run_number }}
+          path: ParqTime.apk
+
+      # Publica el APK en "Releases": el enlace .../releases/latest/download/ParqTime.apk
+      # siempre apunta a la versión más nueva y se puede compartir por WhatsApp.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.0.${{ github.run_number }}
+          name: ParqTime 2.0.${{ github.run_number }}
+          body: "APK para instalar directo en Android. Descarga ParqTime.apk."
+          files: ParqTime.apk
+          make_latest: "true"
