@@ -5,42 +5,84 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Por defecto el workflow solo puede leer. El permiso de escribir se da únicamente al job
+# que publica el APK en Releases.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      # Acciones fijadas a un commit exacto: si alguien altera la etiqueta "v4", aquí no cambia nada.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Pruebas de la lógica de tiempo
         run: ./gradlew --no-daemon testReleaseUnitTest
 
+      - name: Preparar la llave de firma (desde secretos cifrados)
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          AS_VARIABLES: ${{ vars.SIGNING_KEYSTORE_B64 != '' || vars.SIGNING_PASSWORD != '' }}
+        run: |
+          missing=""
+          [ -z "$SIGNING_KEYSTORE_B64" ] && missing="$missing SIGNING_KEYSTORE_B64"
+          [ -z "$SIGNING_PASSWORD" ] && missing="$missing SIGNING_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Faltan estos secretos del repositorio:$missing (Settings > Secrets and variables > Actions > pestaña Secrets > Repository secrets)."
+            if [ "$AS_VARIABLES" = "true" ]; then
+              echo "::error::Están guardados como Variables, no como Secrets. Bórralos de Variables y créalos en la pestaña Secrets."
+            fi
+            exit 1
+          fi
+          echo "$SIGNING_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
       - name: Compilar APK firmado
+        env:
+          SIGNING_STORE_FILE: ${{ runner.temp }}/release.jks
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
 
-      - name: Preparar archivo
-        run: cp app/build/outputs/apk/release/app-release.apk ParqTime.apk
+      - name: Borrar la llave del servidor
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
 
-      - uses: actions/upload-artifact@v4
+      - name: Preparar archivo y su huella SHA-256
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk ParqTime.apk
+          sha256sum ParqTime.apk > ParqTime.apk.sha256
+          echo "APK_SHA256=$(cut -d' ' -f1 ParqTime.apk.sha256)" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ParqTime-${{ github.run_number }}
-          path: ParqTime.apk
+          path: |
+            ParqTime.apk
+            ParqTime.apk.sha256
 
       # Publica el APK en "Releases": el enlace .../releases/latest/download/ParqTime.apk
       # siempre apunta a la versión más nueva y se puede compartir por WhatsApp.
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: v2.0.${{ github.run_number }}
           name: ParqTime 2.0.${{ github.run_number }}
-          body: "APK para instalar directo en Android. Descarga ParqTime.apk."
-          files: ParqTime.apk
+          body: |
+            APK para instalar directo en Android. Descarga ParqTime.apk.
+
+            Huella SHA-256 del APK: `${{ env.APK_SHA256 }}`
+          files: |
+            ParqTime.apk
+            ParqTime.apk.sha256
           make_latest: "true"

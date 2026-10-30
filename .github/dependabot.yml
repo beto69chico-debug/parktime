@@ -1,0 +1,8 @@
+# Avisa con un pull request cuando salga una versión nueva de las acciones de GitHub,
+# para mantener fijados los commits sin quedarse atrás en parches de seguridad.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

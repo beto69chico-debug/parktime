@@ -7,6 +7,10 @@ plugins {
 // Versión: el número de build de GitHub Actions hace que cada APK sea "más nuevo" que el anterior.
 val ciBuild = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
 
+// La llave de firma NO vive en el repo. GitHub Actions la arma en una carpeta temporal a partir
+// de los secretos cifrados SIGNING_KEYSTORE_B64 y SIGNING_PASSWORD, y la borra al terminar.
+val signingStore: File? = System.getenv("SIGNING_STORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
+
 android {
     namespace = "com.tecnobasics.parqtime"
     compileSdk = 35
@@ -21,11 +25,13 @@ android {
 
     signingConfigs {
         // Firma fija: necesaria para que tus amigos puedan actualizar sin desinstalar.
-        create("release") {
-            storeFile = file("signing/parqtime.jks")
-            storePassword = "parqtime-tecnobasics"
-            keyAlias = "parqtime"
-            keyPassword = "parqtime-tecnobasics"
+        signingStore?.let { ks ->
+            create("release") {
+                storeFile = ks
+                storePassword = System.getenv("SIGNING_PASSWORD")
+                keyAlias = "parqtime"
+                keyPassword = System.getenv("SIGNING_PASSWORD")
+            }
         }
     }
 
@@ -34,7 +40,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            // Sin la llave (por ejemplo, en una compu cualquiera) sale un APK sin firmar que no sirve de actualización.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
