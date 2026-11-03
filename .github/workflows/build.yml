@@ -74,7 +74,7 @@ jobs:
 
       # Publica el APK en "Releases": el enlace .../releases/latest/download/ParqTime.apk
       # siempre apunta a la versión más nueva y se puede compartir por WhatsApp.
-      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: v2.0.${{ github.run_number }}
           name: ParqTime 2.0.${{ github.run_number }}
